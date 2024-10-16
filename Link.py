@@ -1,13 +1,15 @@
-import sys
-import json
+import sys,json,time,os,uuid
+from win32com import client
+from  win32gui import GetWindowText, GetForegroundWindow, SetForegroundWindow, EnumWindows
+from win32process import GetWindowThreadProcessId
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableWidget, QTableWidgetItem, QPushButton,
     QHBoxLayout, QHeaderView, QAbstractItemView, QLineEdit, QDialog, QLabel, QDialogButtonBox, QSplitter,
     QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle
 )
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon, QColor, QPalette
-
+from PyQt5.QtGui import QIcon, QColor, QPalette, QPixmap
 
 DATA_FILE = "ssh_data.json"
 
@@ -22,6 +24,9 @@ class MainWindow(QMainWindow):
         self.folder_icon = self.style().standardIcon(QStyle.SP_DirClosedIcon)
         self.folder_icon = self.folder_icon.pixmap(icon_size).scaled(icon_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         
+        # 獲取電腦圖示
+        self.computer_icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
+
         # 設置視窗最大化
         self.showMaximized()
 
@@ -164,13 +169,16 @@ class MainWindow(QMainWindow):
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel("連線群組")
         self.tree.setColumnCount(1)
-        self.tree.setIconSize(QSize(16, 16))
+        self.tree.setIconSize(QSize(32, 32))  # 設置與圖標相同的大小
         self.tree.itemClicked.connect(self.on_tree_node_clicked)
 
         # 右側表格
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["名稱", "IP", "帳號", "密碼", "啟動"])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["","名稱", "IP", "帳號", "密碼", "啟動"])
+
+        # 設置第一列（圖示列）的寬度
+        self.table.setColumnWidth(0, 10)  # 根據需要調整寬度
 
         # 隱藏行號 (最前面的列號標題)
         self.table.verticalHeader().setVisible(False)
@@ -239,12 +247,16 @@ class MainWindow(QMainWindow):
     def set_column_widths(self, column_widths):
         """用百分比設定每個欄位的寬度."""
         total_width = self.table.viewport().width()
+        icon_width = 10  # 固定圖示列寬度
+        remaining_width = total_width - icon_width
+        self.table.setColumnWidth(0, icon_width)
+
         for index, width_ratio in enumerate(column_widths):
-            self.table.setColumnWidth(index, int(total_width * width_ratio))
+            self.table.setColumnWidth(index+1, int(remaining_width  * width_ratio))
 
     def on_resize(self, event):
         """視窗大小改變時，自動調整欄位寬度."""
-        self.set_column_widths([0.3, 0.17, 0.17,0.17,0.1])
+        self.set_column_widths([0.282, 0.17, 0.17,0.17,0.1])
         super().resizeEvent(event)
 
     def add_row(self):
@@ -257,13 +269,20 @@ class MainWindow(QMainWindow):
             name, ip, account, password = dialog.getInputs()
             row_position = self.table.rowCount()
             self.table.insertRow(row_position)
-            self.table.setItem(row_position, 0, QTableWidgetItem(name))
-            self.table.setItem(row_position, 1, QTableWidgetItem(ip))
-            self.table.setItem(row_position, 2, QTableWidgetItem(account))
-            self.table.setItem(row_position, 3, QTableWidgetItem(password))
+
+            # 添加電腦圖示
+            icon_label = QLabel(self.table)
+            icon_label.setPixmap(self.computer_icon.pixmap(QSize(32, 32)))
+            icon_label.setAlignment(Qt.AlignCenter)
+            self.table.setCellWidget(row_position, 0, icon_label)
+
+            self.table.setItem(row_position, 1, QTableWidgetItem(name))
+            self.table.setItem(row_position, 2, QTableWidgetItem(ip))
+            self.table.setItem(row_position, 3, QTableWidgetItem(account))
+            self.table.setItem(row_position, 4, QTableWidgetItem(password))
             connect_button = QPushButton("連線")
             connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
-            self.table.setCellWidget(row_position, 4, connect_button)
+            self.table.setCellWidget(row_position, 5, connect_button)
             self.save_data()
 
     def remove_row(self):
@@ -275,25 +294,30 @@ class MainWindow(QMainWindow):
     def edit_row(self):
         selected_row = self.table.currentRow()
         if selected_row >= 0:
-            current_name = self.table.item(selected_row, 0).text()
-            current_ip = self.table.item(selected_row, 1).text()
-            current_account = self.table.item(selected_row, 2).text()
-            current_password = self.table.item(selected_row, 3).text()
+            current_name = self.table.item(selected_row, 1).text()
+            current_ip = self.table.item(selected_row, 2).text()
+            current_account = self.table.item(selected_row, 3).text()
+            current_password = self.table.item(selected_row, 4).text()
             dialog = EntryDialog(self, current_name, current_ip, current_account, current_password)
             if dialog.exec_() == QDialog.Accepted:
                 name, ip, account, password = dialog.getInputs()
-                self.table.setItem(selected_row, 0, QTableWidgetItem(name))
-                self.table.setItem(selected_row, 1, QTableWidgetItem(ip))
-                self.table.setItem(selected_row, 2, QTableWidgetItem(account))
-                self.table.setItem(selected_row, 3, QTableWidgetItem(password))
+                self.table.setItem(selected_row, 1, QTableWidgetItem(name))
+                self.table.setItem(selected_row, 2, QTableWidgetItem(ip))
+                self.table.setItem(selected_row, 3, QTableWidgetItem(account))
+                self.table.setItem(selected_row, 4, QTableWidgetItem(password))
                 self.save_data()
 
     def connect_to_server(self, row):
-        name = self.table.item(row, 0).text()
-        ip = self.table.item(row, 1).text()
-        account = self.table.item(row, 2).text()
-        password = self.table.item(row, 3).text()
-        print(f"連線至伺服器：名稱={name}, IP={ip}, 帳號={account}, 密碼={password}")
+        name = self.table.item(row, 1).text()
+        ip = self.table.item(row, 2).text()
+        account = self.table.item(row, 3).text()
+        password = self.table.item(row, 4).text()
+        
+        shell = client.Dispatch("WScript.Shell")
+        run_venv = ActivateVenv()
+        run_venv.open_cmd(shell)
+        EnumWindows(run_venv.set_cmd_to_foreground, None)
+        run_venv.activate_venv(shell)
 
     def add_tree_node(self):
         selected_item = self.tree.currentItem()
@@ -305,7 +329,7 @@ class MainWindow(QMainWindow):
                     return
                 new_node = QTreeWidgetItem()
                 new_node.setText(0, new_name)
-                new_node.setIcon(0, self.style().standardIcon(QStyle.SP_DirClosedIcon))
+                new_node.setIcon(0, QIcon(self.folder_icon))
                 selected_item.addChild(new_node)
                 self.tree.expandItem(selected_item)
                 # 將新節點加入資料並儲存
@@ -395,7 +419,7 @@ class MainWindow(QMainWindow):
 
     def on_tree_node_clicked(self, item, column):
         self.populate_table(item.text(0))
-        self.set_column_widths([0.3, 0.2, 0.2,0.2,0.1])  # 依百分比設定每列的寬度 (30%, 50%, 20%)
+        self.set_column_widths([0.282, 0.2, 0.2,0.2,0.1])  # 依百分比設定每列的寬度 (30%, 50%, 20%)
 
     def populate_tree_with_hierarchy(self, node_data, parent=None):
         if not self.is_valid_node(node_data):
@@ -427,13 +451,20 @@ class MainWindow(QMainWindow):
             for connection in selected_node_data.get("connections", []):
                 row_position = self.table.rowCount()
                 self.table.insertRow(row_position)
-                self.table.setItem(row_position, 0, QTableWidgetItem(connection["name"]))
-                self.table.setItem(row_position, 1, QTableWidgetItem(connection["ip"]))
-                self.table.setItem(row_position, 2, QTableWidgetItem(connection["account"]))
-                self.table.setItem(row_position, 3, QTableWidgetItem(connection["password"]))
+
+                # 添加電腦圖示
+                icon_label = QLabel(self.table)
+                icon_label.setPixmap(self.computer_icon.pixmap(QSize(32, 32)))
+                icon_label.setAlignment(Qt.AlignCenter)
+                self.table.setCellWidget(row_position, 0, icon_label)
+
+                self.table.setItem(row_position, 1, QTableWidgetItem(connection["name"]))
+                self.table.setItem(row_position, 2, QTableWidgetItem(connection["ip"]))
+                self.table.setItem(row_position, 3, QTableWidgetItem(connection["account"]))
+                self.table.setItem(row_position, 4, QTableWidgetItem(connection["password"]))
                 connect_button = QPushButton("連線")
                 connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
-                self.table.setCellWidget(row_position, 4, connect_button)
+                self.table.setCellWidget(row_position, 5, connect_button)
     
     def find_node_data(self, node_data, node_name):
         # 遞迴地在 JSON 資料結構中找到對應名稱的節點資料
@@ -508,10 +539,10 @@ class MainWindow(QMainWindow):
             node_data["connections"] = []
             for row in range(self.table.rowCount()):
                 connection = {
-                    "name": self.table.item(row, 0).text(),
-                    "ip": self.table.item(row, 1).text(),
-                    "account": self.table.item(row, 2).text(),
-                    "password": self.table.item(row, 3).text()
+                    "name": self.table.item(row, 1).text(),
+                    "ip": self.table.item(row, 2).text(),
+                    "account": self.table.item(row, 3).text(),
+                    "password": self.table.item(row, 4).text()
                 }
                 node_data["connections"].append(connection)
 
@@ -534,18 +565,19 @@ class MainWindow(QMainWindow):
         self.tree.clear()
         root = QTreeWidgetItem(self.tree)
         root.setText(0, "/")
-        root.setIcon(0, self.style().standardIcon(QStyle.SP_DirClosedIcon))
+        root.setIcon(0, QIcon(self.folder_icon))
         for nodeItem in self.data["children"]:
             node_name=nodeItem['name']
             
             if node_name != "/":
                 node = QTreeWidgetItem(root)
                 node.setText(0, node_name)
-                node.setIcon(0, self.style().standardIcon(QStyle.SP_DirClosedIcon))
+                node.setIcon(0, QIcon(self.folder_icon))
         self.tree.expandAll()
 
 
 class EntryDialog(QDialog):
+
     def __init__(self, parent=None, name="", ip="", account="", password=""):
         super().__init__(parent)
         self.setWindowTitle("輸入資料")
@@ -577,6 +609,42 @@ class EntryDialog(QDialog):
     def getInputs(self):
         return self.name_input.text(), self.ip_input.text(), self.account_input.text(), self.password_input.text()
 
+class ActivateVenv:
+
+    uid=""
+
+    def set_cmd_to_foreground(self, hwnd, extra):
+        """sets first command prompt to forgeround"""
+
+        if f"TestCMD-{uid}" in GetWindowText(hwnd):
+            SetForegroundWindow(hwnd)
+            return
+
+    def get_pid(self):
+        """gets process id of command prompt on foreground"""
+
+        window = GetForegroundWindow()
+        return GetWindowThreadProcessId(window)[1]
+
+    def activate_venv(self, shell):
+        """activates venv of the active command prompt"""
+
+        shell.AppActivate(self.get_pid())
+        shell.SendKeys("ssh visera12@192.168.112.76")
+        shell.SendKeys("{ENTER}")
+        time.sleep(1)
+        shell.SendKeys("visera12")
+        shell.SendKeys("{ENTER}")
+        time.sleep(1)
+        shell.SendKeys("ll")
+        shell.SendKeys("{ENTER}")
+
+    def open_cmd(self, shell):
+        """ opens cmd """
+        uid = uuid.uuid4()
+
+        shell.run(f"D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{uid} /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
+        time.sleep(6)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

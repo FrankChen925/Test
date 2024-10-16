@@ -3,23 +3,34 @@ import json
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableWidget, QTableWidgetItem, QPushButton,
     QHBoxLayout, QHeaderView, QAbstractItemView, QLineEdit, QDialog, QLabel, QDialogButtonBox, QSplitter,
-    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog
+    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle
 )
 from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor, QPalette
+
 
 DATA_FILE = "ssh_data.json"
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Python UI with Tabs and Tree")
+        self.setWindowTitle("Fask Link")
         self.setGeometry(100, 100, 1000, 600)
+        
+        # 設置較大的圖標大小
+        icon_size = QSize(32, 32)  # 您可以根據需要調整這個大小
+        self.folder_icon = self.style().standardIcon(QStyle.SP_DirClosedIcon)
+        self.folder_icon = self.folder_icon.pixmap(icon_size).scaled(icon_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        # 設置視窗最大化
+        self.showMaximized()
+
+        # 設置深色主題
+        self.set_dark_theme()
+
          # ... 其他初始化代碼 ...
         self.data = self.get_default_data()
-        
-
+    
         # 創建中心部件和佈局
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -31,7 +42,7 @@ class MainWindow(QMainWindow):
 
         # 添加 "SSH" 頁籤
         ssh_tab = QWidget()
-        self.tab_widget.addTab(ssh_tab, "SSH")
+        self.tab_widget.addTab(ssh_tab, "SSH站台管理")
 
         # 在 SSH 頁籤中加入分隔器佈局
         self.create_ssh_tab(ssh_tab)
@@ -40,9 +51,114 @@ class MainWindow(QMainWindow):
         self.load_data()
         #self.populate_tree()
 
+    def set_dark_theme(self):
+        dark_palette = QPalette()
+        dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.WindowText, Qt.white)
+        dark_palette.setColor(QPalette.Base, QColor(25, 25, 25))
+        dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+        dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+        dark_palette.setColor(QPalette.Text, Qt.white)
+        dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+        dark_palette.setColor(QPalette.ButtonText, Qt.white)
+        dark_palette.setColor(QPalette.BrightText, Qt.red)
+        dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+        dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+        dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+
+        self.setPalette(dark_palette)
+
+        # 設置應用程序樣式表
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #353535;
+            }
+            QTreeWidget {
+                background-color: #252525;
+                color: #ffffff;
+                border: 1px solid #555555;
+            }
+            QTableWidget {
+                background-color: #252525;
+                color: #ffffff;
+                gridline-color: #555555;
+                border: 1px solid #555555;
+            }
+            QHeaderView::section {
+                background-color: #353535;
+                color: #ffffff;
+                padding: 5px;
+                border: 1px solid #555555;
+            }
+            QPushButton {
+                background-color: #454545;
+                color: #ffffff;
+                border: 1px solid #555555;
+                padding: 5px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #555555;
+            }
+            QPushButton:pressed {
+                background-color: #353535;
+            }
+            QTabWidget::pane {
+                border: 1px solid #555555;
+            }
+            QTabBar::tab {
+                background-color: #353535;
+                color: #ffffff;
+                padding: 8px;
+                border: 1px solid #555555;
+            }
+            QTabBar::tab:selected {
+                background-color: #454545;
+            }
+            QLineEdit {
+                background-color: #252525;
+                color: #ffffff;
+                border: 1px solid #555555;
+                padding: 3px;
+            }
+        """)
+
+    def set_application_font(self, font_family, font_size):
+        style_sheet = f"""
+            QWidget {{
+                font-family: {font_family};
+                font-size: {font_size}px;
+            }}
+        """
+        QApplication.instance().setStyleSheet(style_sheet)
+
+    def set_tree_font(self, font_family, font_size):
+        self.tree.setStyleSheet(f"""
+            QTreeWidget {{
+                font-family: {font_family};
+                font-size: {font_size}px;
+            }}
+        """)
+
+    def set_grid_font(self, font_family, font_size):
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                font-family: {font_family};
+                font-size: {font_size}px;
+            }}
+        """)
+
     def create_ssh_tab(self, ssh_tab):
         # 創建分隔器
         splitter = QSplitter()
+
+        # 設置分隔器的樣式
+        splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #555555;
+            }
+        """)
 
         # 創建左側 Tree
         self.tree = QTreeWidget()
@@ -55,7 +171,12 @@ class MainWindow(QMainWindow):
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["名稱", "IP", "帳號", "密碼", "啟動"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # 隱藏行號 (最前面的列號標題)
+        self.table.verticalHeader().setVisible(False)
+        #self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # 設定選擇行
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
 
         # 在右側表格加入控制按鈕
@@ -104,9 +225,27 @@ class MainWindow(QMainWindow):
 
         splitter.addWidget(left_widget)
         splitter.addWidget(right_widget)
+        splitter.setStretchFactor(0, 1)  # 左側 Tree 佔 20%
+        splitter.setStretchFactor(1, 9)  # 右側 Grid 佔 80%
+
+        self.set_application_font("Consolas",20)
+
+        self.set_tree_font("微軟正黑體", 27)
+        self.set_grid_font("微軟正黑體", 24)
 
         main_layout = QVBoxLayout(ssh_tab)
         main_layout.addWidget(splitter)
+
+    def set_column_widths(self, column_widths):
+        """用百分比設定每個欄位的寬度."""
+        total_width = self.table.viewport().width()
+        for index, width_ratio in enumerate(column_widths):
+            self.table.setColumnWidth(index, int(total_width * width_ratio))
+
+    def on_resize(self, event):
+        """視窗大小改變時，自動調整欄位寬度."""
+        self.set_column_widths([0.3, 0.17, 0.17,0.17,0.1])
+        super().resizeEvent(event)
 
     def add_row(self):
         if not self.tree.currentItem():
@@ -166,7 +305,7 @@ class MainWindow(QMainWindow):
                     return
                 new_node = QTreeWidgetItem()
                 new_node.setText(0, new_name)
-                new_node.setIcon(0, QIcon.fromTheme("folder"))
+                new_node.setIcon(0, self.style().standardIcon(QStyle.SP_DirClosedIcon))
                 selected_item.addChild(new_node)
                 self.tree.expandItem(selected_item)
                 # 將新節點加入資料並儲存
@@ -174,31 +313,73 @@ class MainWindow(QMainWindow):
                 self.save_data()
 
     def remove_tree_node(self):
+        """刪除選中的樹形節點，同時更新資料結構."""
         selected_item = self.tree.currentItem()
         if selected_item and selected_item.parent():
             node_name = selected_item.text(0)
-            del self.data[node_name]  # 刪除資料
+
+            # 刪除樹上的節點
             parent = selected_item.parent()
             parent.removeChild(selected_item)
+
+            # 遞迴地在 self.data 中刪除該節點的資料
+            parent_name = parent.text(0)
+            parent_data = self.find_node_data(self.data, parent_name)
+            if parent_data:
+                # 刪除父節點中的對應子節點
+                self.remove_node_from_data(parent_data, node_name)
+
+            # 儲存更新後的資料
             self.save_data()
         else:
             QMessageBox.warning(self, "警告", "無法刪除根節點或未選擇節點！")
 
+    def remove_node_from_data(self, parent_data, node_name):
+        """遞迴地在父節點資料中移除指定名稱的子節點."""
+        for i, child in enumerate(parent_data["children"]):
+            if child["name"] == node_name:
+                del parent_data["children"][i]
+                return
+            self.remove_node_from_data(child, node_name)
+
     def edit_tree_node(self):
         selected_item = self.tree.currentItem()
         if selected_item:
-            new_name, ok = QInputDialog.getText(self, "修改節點名稱", "請輸入新名稱：", QLineEdit.Normal, selected_item.text(0))
-            if ok and new_name.strip():
+            old_name = selected_item.text(0)
+            new_name, ok = QInputDialog.getText(self, "修改節點名稱", "請輸入新名稱：", QLineEdit.Normal, old_name)
+            if ok and new_name.strip() and new_name != old_name:
                 if new_name.strip() == "":
                     QMessageBox.warning(self, "錯誤", "節點名稱不可為空白！")
                     return
                 if self.check_duplicate_node(new_name):
                     QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
                     return
-                old_name = selected_item.text(0)
-                self.data[new_name] = self.data.pop(old_name)  # 更新資料字典中的名稱
+                
+                # 更新樹形結構
                 selected_item.setText(0, new_name)
-                self.save_data()
+                
+                # 更新數據結構
+                try:
+                    self.update_node_name_in_data(old_name, new_name)
+                    self.save_data()
+                except KeyError as e:
+                    QMessageBox.warning(self, "錯誤", f"更新節點名稱時發生錯誤：{str(e)}")
+                    # 回滾樹形結構的更改
+                    selected_item.setText(0, old_name)
+
+    def update_node_name_in_data(self, old_name, new_name):
+        def update_recursive(node):
+            if isinstance(node, dict):
+                if node.get("name") == old_name:
+                    node["name"] = new_name
+                    return True
+                for child in node.get("children", []):
+                    if update_recursive(child):
+                        return True
+            return False
+
+        if not update_recursive(self.data):
+            raise KeyError(f"找不到節點：{old_name}")
 
     def check_duplicate_node(self, node_name):
         root = self.tree.topLevelItem(0)  # 根節點
@@ -214,6 +395,7 @@ class MainWindow(QMainWindow):
 
     def on_tree_node_clicked(self, item, column):
         self.populate_table(item.text(0))
+        self.set_column_widths([0.3, 0.2, 0.2,0.2,0.1])  # 依百分比設定每列的寬度 (30%, 50%, 20%)
 
     def populate_tree_with_hierarchy(self, node_data, parent=None):
         if not self.is_valid_node(node_data):
@@ -223,13 +405,14 @@ class MainWindow(QMainWindow):
             self.tree.clear()
             root = QTreeWidgetItem(self.tree)
             root.setText(0, node_data["name"])
-            root.setIcon(0, QIcon.fromTheme("folder"))
+            root.setIcon(0, QIcon(self.folder_icon))
+            
             for child in node_data.get("children", []):
                 self.populate_tree_with_hierarchy(child, root)
         else:
             child_item = QTreeWidgetItem(parent)
             child_item.setText(0, node_data["name"])
-            child_item.setIcon(0, QIcon.fromTheme("folder"))
+            child_item.setIcon(0, QIcon(self.folder_icon))
             for child in node_data.get("children", []):
                 self.populate_tree_with_hierarchy(child, child_item)
 
@@ -286,7 +469,7 @@ class MainWindow(QMainWindow):
     def get_default_data(self):
         """返回一個包含根節點的初始資料結構"""
         return {
-            "name": "Root",
+            "name": "/",
             "connections": [],
             "children": []
         }
@@ -300,9 +483,11 @@ class MainWindow(QMainWindow):
         if root:
             self.data = self.traverse_tree_and_save_with_hierarchy(root)  # 遍歷整個樹並儲存所有節點的資料
 
-        # 將所有資料寫回 JSON 檔案
-        with open(DATA_FILE, 'w', encoding='utf-8') as file:
-            json.dump(self.data, file, ensure_ascii=False, indent=4)
+        try:
+            with open(DATA_FILE, 'w', encoding='utf-8') as file:
+                json.dump(self.data, file, ensure_ascii=False, indent=4)
+        except Exception as e:
+            QMessageBox.warning(self, "錯誤", f"保存數據時發生錯誤：{str(e)}")
 
     def traverse_tree_and_save_with_hierarchy(self, node):
         # 將節點儲存為階層結構，包含名稱、連線資訊、及其子節點
@@ -348,15 +533,15 @@ class MainWindow(QMainWindow):
     def populate_tree(self):
         self.tree.clear()
         root = QTreeWidgetItem(self.tree)
-        root.setText(0, "Root")
-        root.setIcon(0, QIcon.fromTheme("folder"))
+        root.setText(0, "/")
+        root.setIcon(0, self.style().standardIcon(QStyle.SP_DirClosedIcon))
         for nodeItem in self.data["children"]:
             node_name=nodeItem['name']
             
-            if node_name != "Root":
+            if node_name != "/":
                 node = QTreeWidgetItem(root)
                 node.setText(0, node_name)
-                node.setIcon(0, QIcon.fromTheme("folder"))
+                node.setIcon(0, self.style().standardIcon(QStyle.SP_DirClosedIcon))
         self.tree.expandAll()
 
 

@@ -316,8 +316,8 @@ class MainWindow(QMainWindow):
         shell = client.Dispatch("WScript.Shell")
         run_venv = ActivateVenv()
         run_venv.open_cmd(shell)
-        EnumWindows(run_venv.set_cmd_to_foreground, None)
-        run_venv.activate_venv(shell)
+        #EnumWindows(run_venv.set_cmd_to_foreground, None)
+        run_venv.activate_venv(shell,ip,account,password)
 
     def add_tree_node(self):
         selected_item = self.tree.currentItem()
@@ -616,7 +616,7 @@ class ActivateVenv:
     def set_cmd_to_foreground(self, hwnd, extra):
         """sets first command prompt to forgeround"""
 
-        if f"TestCMD-{uid}" in GetWindowText(hwnd):
+        if f"TestCMD-{self.uid}" in GetWindowText(hwnd):
             SetForegroundWindow(hwnd)
             return
 
@@ -626,14 +626,14 @@ class ActivateVenv:
         window = GetForegroundWindow()
         return GetWindowThreadProcessId(window)[1]
 
-    def activate_venv(self, shell):
+    def activate_venv(self, shell,ip,account,password):
         """activates venv of the active command prompt"""
 
-        shell.AppActivate(self.get_pid())
-        shell.SendKeys("ssh visera12@192.168.112.76")
+        #shell.AppActivate(self.get_pid())
+        shell.SendKeys(f"ssh {account}@{ip}")
         shell.SendKeys("{ENTER}")
         time.sleep(1)
-        shell.SendKeys("visera12")
+        shell.SendKeys(password)
         shell.SendKeys("{ENTER}")
         time.sleep(1)
         shell.SendKeys("ll")
@@ -641,9 +641,9 @@ class ActivateVenv:
 
     def open_cmd(self, shell):
         """ opens cmd """
-        uid = uuid.uuid4()
+        self.uid = uuid.uuid4()
 
-        shell.run(f"D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{uid} /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
+        shell.run(f"D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{self.uid} /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
         time.sleep(6)
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from win32process import GetWindowThreadProcessId
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableWidget, QTableWidgetItem, QPushButton,
     QHBoxLayout, QHeaderView, QAbstractItemView, QLineEdit, QDialog, QLabel, QDialogButtonBox, QSplitter,
-    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle
+    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle,QCheckBox
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon, QColor, QPalette, QPixmap
@@ -83,6 +83,14 @@ class MainWindow(QMainWindow):
                 background-color: #252525;
                 color: #ffffff;
                 border: 1px solid #555555;
+            }
+            QTreeWidget::item:selected {
+                background-color: #2979ff;  /* 使用更明顯的藍色 */
+                color: white;
+            }
+            QTreeWidget::item:hover {
+                background-color: #1565c0;  /* 懸停時的顏色 */
+                color: white;
             }
             QTableWidget {
                 background-color: #252525;
@@ -268,8 +276,12 @@ class MainWindow(QMainWindow):
         dialog = EntryDialog(self)
         if dialog.exec_() == QDialog.Accepted:
             name, ip, account, password, via_host = dialog.getInputs()
+            selected_connection_id = dialog.get_selected_connection_id()  # 獲取選中的連線ID
             row_position = self.table.rowCount()
             self.table.insertRow(row_position)
+
+            # 產生唯一識別碼
+            unique_id = str(uuid.uuid4())
 
             # 添加電腦圖示
             icon_label = QLabel(self.table)
@@ -277,35 +289,74 @@ class MainWindow(QMainWindow):
             icon_label.setAlignment(Qt.AlignCenter)
             self.table.setCellWidget(row_position, 0, icon_label)
 
-            self.table.setItem(row_position, 1, QTableWidgetItem(name))
+            # 將唯一識別碼存儲在第一個單元格的userData中
+            name_item = QTableWidgetItem(name)
+            name_item.setData(Qt.UserRole, unique_id)
+            
+            self.table.setItem(row_position, 1, name_item)
             self.table.setItem(row_position, 2, QTableWidgetItem(ip))
             self.table.setItem(row_position, 3, QTableWidgetItem(account))
             self.table.setItem(row_position, 4, QTableWidgetItem(password))
             connect_button = QPushButton("連線")
             connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
             self.table.setCellWidget(row_position, 5, connect_button)
-            
-            # 儲存 "透過主機連線" 的狀態
-            self.table.setItem(row_position, 6, QTableWidgetItem(str(via_host)))
-            
+
+            # 在第6列儲存via_host和連線ID的信息
+            via_host_info = {
+                "enabled": via_host,
+                "connection_id": selected_connection_id if via_host else None
+            }
+
+            self.table.setItem(row_position, 6, QTableWidgetItem(json.dumps(via_host_info)))
+
             self.save_data()
 
     def edit_row(self):
         selected_row = self.table.currentRow()
         if selected_row >= 0:
-            current_name = self.table.item(selected_row, 1).text()
+            # 獲取當前行的所有數據，包括unique_id
+            current_name_item = self.table.item(selected_row, 1)
+            current_unique_id = current_name_item.data(Qt.UserRole)  # 保存原有的unique_id
+            current_name = current_name_item.text()
             current_ip = self.table.item(selected_row, 2).text()
             current_account = self.table.item(selected_row, 3).text()
             current_password = self.table.item(selected_row, 4).text()
-            current_via_host = self.table.item(selected_row, 6).text() == 'True'
-            dialog = EntryDialog(self, current_name, current_ip, current_account, current_password, current_via_host)
+            
+            # 解析當前的via_host信息
+            via_host_info = json.loads(self.table.item(selected_row, 6).text())
+            current_via_host = via_host_info.get("enabled", False)
+            current_via_host_id = via_host_info.get("connection_id")
+
+            dialog = EntryDialog(
+                self, 
+                current_name, 
+                current_ip, 
+                current_account, 
+                current_password, 
+                current_via_host,
+                current_via_host_id
+            )
+            
             if dialog.exec_() == QDialog.Accepted:
                 name, ip, account, password, via_host = dialog.getInputs()
-                self.table.setItem(selected_row, 1, QTableWidgetItem(name))
+                selected_connection_id = dialog.get_selected_connection_id()
+                
+                # 創建新的QTableWidgetItem並保留原有的unique_id
+                name_item = QTableWidgetItem(name)
+                name_item.setData(Qt.UserRole, current_unique_id)  # 使用原有的unique_id
+                
+                self.table.setItem(selected_row, 1, name_item)
                 self.table.setItem(selected_row, 2, QTableWidgetItem(ip))
                 self.table.setItem(selected_row, 3, QTableWidgetItem(account))
                 self.table.setItem(selected_row, 4, QTableWidgetItem(password))
-                self.table.setItem(selected_row, 6, QTableWidgetItem(str(via_host)))
+                
+                # 更新via_host信息
+                via_host_info = {
+                    "enabled": via_host,
+                    "connection_id": selected_connection_id if via_host else None
+                }
+                self.table.setItem(selected_row, 6, QTableWidgetItem(json.dumps(via_host_info)))
+                
                 self.save_data()
 
     def remove_row(self):
@@ -313,24 +364,6 @@ class MainWindow(QMainWindow):
         if selected_row >= 0:
             self.table.removeRow(selected_row)
             self.save_data()
-
-    def edit_row(self):
-        selected_row = self.table.currentRow()
-        if selected_row >= 0:
-            current_name = self.table.item(selected_row, 1).text()
-            current_ip = self.table.item(selected_row, 2).text()
-            current_account = self.table.item(selected_row, 3).text()
-            current_password = self.table.item(selected_row, 4).text()
-            current_via_host = self.table.item(selected_row, 6).text() == 'True'
-            dialog = EntryDialog(self, current_name, current_ip, current_account, current_password, current_via_host)
-            if dialog.exec_() == QDialog.Accepted:
-                name, ip, account, password, via_host = dialog.getInputs()
-                self.table.setItem(selected_row, 1, QTableWidgetItem(name))
-                self.table.setItem(selected_row, 2, QTableWidgetItem(ip))
-                self.table.setItem(selected_row, 3, QTableWidgetItem(account))
-                self.table.setItem(selected_row, 4, QTableWidgetItem(password))
-                self.table.setItem(selected_row, 6, QTableWidgetItem(str(via_host)))
-                self.save_data()
 
     def connect_to_server(self, row):
         name = self.table.item(row, 1).text()
@@ -469,7 +502,6 @@ class MainWindow(QMainWindow):
                 
     def populate_table(self, node_name):
         self.table.setRowCount(0)
-        # 根據選中的節點名稱來尋找對應的節點資料
         selected_node_data = self.find_node_data(self.data, node_name)
         if selected_node_data:
             for connection in selected_node_data.get("connections", []):
@@ -482,15 +514,25 @@ class MainWindow(QMainWindow):
                 icon_label.setAlignment(Qt.AlignCenter)
                 self.table.setCellWidget(row_position, 0, icon_label)
 
-                self.table.setItem(row_position, 1, QTableWidgetItem(connection["name"]))
+                # 創建帶有唯一識別碼的項目
+                name_item = QTableWidgetItem(connection["name"])
+                name_item.setData(Qt.UserRole, connection.get("id", str(uuid.uuid4())))  # 使用已存在的id或創建新的
+                
+                self.table.setItem(row_position, 1, name_item)
                 self.table.setItem(row_position, 2, QTableWidgetItem(connection["ip"]))
                 self.table.setItem(row_position, 3, QTableWidgetItem(connection["account"]))
                 self.table.setItem(row_position, 4, QTableWidgetItem(connection["password"]))
                 connect_button = QPushButton("連線")
                 connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
                 self.table.setCellWidget(row_position, 5, connect_button)
-                self.table.setItem(row_position, 6, QTableWidgetItem(str(connection["via_host"])))
-    
+                
+                # 設置via_host信息
+                via_host_info = {
+                    "enabled": connection.get("via_host", False),
+                    "connection_id": connection.get("via_host_id")
+                }
+                self.table.setItem(row_position, 6, QTableWidgetItem(json.dumps(via_host_info)))
+
     def find_node_data(self, node_data, node_name):
         # 遞迴地在 JSON 資料結構中找到對應名稱的節點資料
         if node_data["name"] == node_name:
@@ -546,33 +588,38 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "錯誤", f"保存數據時發生錯誤：{str(e)}")
 
     def traverse_tree_and_save_with_hierarchy(self, node):
-        # 將節點儲存為階層結構，包含名稱、連線資訊、及其子節點
         node_name = node.text(0)
         node_data = {
             "name": node_name,
-            "connections": [],  # 初始化連線資訊清單
-            "children": []      # 初始化子節點清單
+            "connections": [],
+            "children": []
         }
 
-        # 從現有資料中獲取連線資訊
         existing_node_data = self.find_node_data(self.data, node_name)
         if existing_node_data:
             node_data["connections"] = existing_node_data.get("connections", [])
 
-        # 如果這個節點是當前選取的節點，用當前表格中的資料更新連線資訊
         if node == self.tree.currentItem():
             node_data["connections"] = []
             for row in range(self.table.rowCount()):
+                # 獲取唯一識別碼
+                name_item = self.table.item(row, 1)
+                unique_id = name_item.data(Qt.UserRole) if name_item else str(uuid.uuid4())
+                
+                # 解析via_host信息
+                via_host_info = json.loads(self.table.item(row, 6).text())
+                
                 connection = {
+                    "id": unique_id,  # 保存唯一識別碼
                     "name": self.table.item(row, 1).text(),
                     "ip": self.table.item(row, 2).text(),
                     "account": self.table.item(row, 3).text(),
                     "password": self.table.item(row, 4).text(),
-                    "via_host": self.table.item(row, 6).text() == 'True'
+                    "via_host": via_host_info.get("enabled", False),
+                    "via_host_id": via_host_info.get("connection_id")
                 }
                 node_data["connections"].append(connection)
 
-        # 遍歷所有子節點，並將結果加入到 "children" 清單中
         for i in range(node.childCount()):
             child_node = node.child(i)
             node_data["children"].append(self.traverse_tree_and_save_with_hierarchy(child_node))
@@ -601,53 +648,225 @@ class MainWindow(QMainWindow):
                 node.setIcon(0, QIcon(self.folder_icon))
         self.tree.expandAll()
 
-
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QCheckBox
-from PyQt5.QtCore import Qt
-
 class EntryDialog(QDialog):
-
-    def __init__(self, parent=None, name="", ip="", account="", password="", via_host=False):
+    def __init__(self, parent=None, name="", ip="", account="", password="", via_host=False, via_host_id=None):
         super().__init__(parent)
+        self.parent = parent
         self.setWindowTitle("輸入資料")
+        self.setMinimumWidth(400)
         layout = QVBoxLayout()
+        
+        # 為對話框中的樹狀結構設置相同的選取樣式
+        self.setStyleSheet("""
+            QTreeWidget {
+                background-color: #252525;
+                color: #ffffff;
+                border: 1px solid #555555;
+            }
+            QTreeWidget::item:selected {
+                background-color: #2979ff;
+                color: white;
+            }
+            QTreeWidget::item:hover {
+                background-color: #1565c0;
+                color: white;
+            }
+        """)
 
-        layout.addWidget(QLabel("名稱:"))
+        # 記錄當前選擇的連線資訊
+        self.selected_connection = None
+        self.selected_connection_id = via_host_id  # 新增：儲存已選擇的連線ID
+
+        # 基本輸入欄位
+        layout.addWidget(QLabel("名稱: *"))
         self.name_input = QLineEdit(name)
         layout.addWidget(self.name_input)
 
-        layout.addWidget(QLabel("IP:"))
+        layout.addWidget(QLabel("IP: *"))
         self.ip_input = QLineEdit(ip)
         layout.addWidget(self.ip_input)
 
-        layout.addWidget(QLabel("帳號:"))
+        layout.addWidget(QLabel("帳號: *"))
         self.account_input = QLineEdit(account)
         layout.addWidget(self.account_input)
 
-        layout.addWidget(QLabel("密碼:"))
+        layout.addWidget(QLabel("密碼: *"))
         self.password_input = QLineEdit(password)
         layout.addWidget(self.password_input)
 
-        # 新增 "透過主機連線" 複選框
+        # 透過主機連線 checkbox
         self.via_host_checkbox = QCheckBox("透過主機連線")
         self.via_host_checkbox.setChecked(via_host)
+        self.via_host_checkbox.stateChanged.connect(self.on_checkbox_changed)
         layout.addWidget(self.via_host_checkbox)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        # 選擇連線提示標籤
+        self.connection_label = QLabel("請選擇連線主機: *")
+        self.connection_label.setVisible(via_host)
+        layout.addWidget(self.connection_label)
+
+        # 新增樹狀結構
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabel("連線群組")
+        self.tree.setColumnCount(1)
+        self.tree.setEnabled(via_host)
+        self.tree.itemClicked.connect(self.on_tree_item_clicked)
+        layout.addWidget(self.tree)
+
+        # 顯示當前選擇的連線
+        self.selected_label = QLabel()
+        self.selected_label.setVisible(via_host)
+        layout.addWidget(self.selected_label)
+
+        # 如果有預設的via_host_id，在樹狀結構載入後選中對應的項目
+        self.tree.itemClicked.connect(self.on_tree_item_clicked)
+        if via_host_id:
+            self.restore_selected_connection(via_host_id)
+
+        # 載入樹狀結構資料
+        if hasattr(parent, 'data'):
+            self.populate_tree_with_hierarchy(parent.data)
+
+            # 如果有勾選 via_host 且有 via_host_id，自動展開並選取節點
+            if via_host and via_host_id:
+                self.tree.expandAll()  # 展開所有節點
+                self.restore_selected_connection(via_host_id)
+
+        # 按鈕
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box.accepted.connect(self.validate_and_accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
 
         self.setLayout(layout)
 
+    def restore_selected_connection(self, via_host_id):
+        """根據saved_connection_id恢復選中狀態"""
+        def find_connection_item(item):
+            # 檢查當前項目
+            conn_data = item.data(0, Qt.UserRole)
+            if conn_data and conn_data.get('id') == via_host_id:
+                return item
+            
+            # 遞迴檢查子項目
+            for i in range(item.childCount()):
+                result = find_connection_item(item.child(i))
+                if result:
+                    return result
+            return None
+
+        # 從根節點開始搜索
+        root = self.tree.topLevelItem(0)
+        if root:
+            found_item = find_connection_item(root)
+            if found_item:
+                # 確保父節點都被展開
+                parent = found_item.parent()
+                while parent:
+                    parent.setExpanded(True)
+                    parent = parent.parent()
+                
+                # 選中找到的項目
+                self.tree.setCurrentItem(found_item)
+                self.on_tree_item_clicked(found_item, 0)
+                
+                # 確保選中的項目可見
+                self.tree.scrollToItem(found_item)
+
+    def on_checkbox_changed(self, state):
+        """當checkbox狀態改變時更新UI元件"""
+        is_checked = state == Qt.Checked
+        self.tree.setEnabled(is_checked)
+        self.connection_label.setVisible(is_checked)
+        self.selected_label.setVisible(is_checked)
+        if not is_checked:
+            self.selected_connection = None
+            self.selected_label.setText("")
+
+    def populate_tree_with_hierarchy(self, node_data, parent=None):
+        """遞迴填充樹狀結構"""
+        if not isinstance(node_data, dict):
+            return
+
+        if parent is None:
+            self.tree.clear()
+            root = QTreeWidgetItem(self.tree)
+            root.setText(0, node_data["name"])
+            if hasattr(self.parent, 'folder_icon'):
+                root.setIcon(0, QIcon(self.parent.folder_icon))
+            
+            self.add_connections_to_node(root, node_data.get("connections", []))
+            
+            for child in node_data.get("children", []):
+                self.populate_tree_with_hierarchy(child, root)
+        else:
+            child_item = QTreeWidgetItem(parent)
+            child_item.setText(0, node_data["name"])
+            if hasattr(self.parent, 'folder_icon'):
+                child_item.setIcon(0, QIcon(self.parent.folder_icon))
+            
+            self.add_connections_to_node(child_item, node_data.get("connections", []))
+            
+            for child in node_data.get("children", []):
+                self.populate_tree_with_hierarchy(child, child_item)
+
+    def add_connections_to_node(self, node, connections):
+        """為節點添加連線資訊"""
+        for conn in connections:
+            conn_item = QTreeWidgetItem(node)
+            conn_item.setText(0, f"{conn['name']} ({conn['ip']})")
+            if hasattr(self.parent, 'computer_icon'):
+                conn_item.setIcon(0, self.parent.computer_icon)
+            # 儲存連線資訊到item中
+            conn_item.setData(0, Qt.UserRole, conn)
+
+    def on_tree_item_clicked(self, item, column):
+        """處理樹節點點擊事件"""
+        conn_data = item.data(0, Qt.UserRole)
+        if conn_data:
+            self.selected_connection = conn_data
+            self.selected_connection_id = conn_data.get('id')  # 保存選中連線的ID
+            self.selected_label.setText(f"已選擇連線: {conn_data['name']} ({conn_data['ip']})")
+        else:
+            self.selected_connection = None
+            self.selected_connection_id = None
+            self.selected_label.setText("")
+
+    def get_selected_connection_id(self):
+        """獲取選擇的連線ID"""
+        return self.selected_connection_id
+
+    def validate_and_accept(self):
+        """驗證輸入資料並決定是否接受"""
+        # 檢查必填欄位
+        if not all([
+            self.name_input.text().strip(),
+            self.ip_input.text().strip(),
+            self.account_input.text().strip(),
+            self.password_input.text().strip()
+        ]):
+            QMessageBox.warning(self, "警告", "請填寫所有必填欄位（標有 * 號的欄位）")
+            return
+
+        # 如果勾選了"透過主機連線"，檢查是否選擇了連線
+        if self.via_host_checkbox.isChecked() and not self.selected_connection:
+            QMessageBox.warning(self, "警告", "請選擇一個連線主機")
+            return
+
+        self.accept()
+
     def getInputs(self):
         return (
-            self.name_input.text(),
-            self.ip_input.text(),
-            self.account_input.text(),
-            self.password_input.text(),
+            self.name_input.text().strip(),
+            self.ip_input.text().strip(),
+            self.account_input.text().strip(),
+            self.password_input.text().strip(),
             self.via_host_checkbox.isChecked()
         )
+
+    def get_selected_connection(self):
+        """獲取選擇的連線資訊"""
+        return self.selected_connection
 
 class ActivateVenv:
 
@@ -669,7 +888,7 @@ class ActivateVenv:
         """ opens cmd """
         self.uid = uuid.uuid4()
 
-        shell.run(f"E:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{self.uid} /cmd cmd /k \"E:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
+        shell.run(f"D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{self.uid} /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
         time.sleep(6)
 
 if __name__ == "__main__":

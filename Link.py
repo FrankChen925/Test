@@ -174,8 +174,9 @@ class MainWindow(QMainWindow):
 
         # 右側表格
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["","名稱", "IP", "帳號", "密碼", "啟動"])
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["","名稱", "IP", "帳號", "密碼", "啟動", "透過主機"])
+        self.table.setColumnHidden(6, True)  # 隱藏 "透過主機連線" 列
 
         # 設置第一列（圖示列）的寬度
         self.table.setColumnWidth(0, 10)  # 根據需要調整寬度
@@ -266,7 +267,7 @@ class MainWindow(QMainWindow):
 
         dialog = EntryDialog(self)
         if dialog.exec_() == QDialog.Accepted:
-            name, ip, account, password = dialog.getInputs()
+            name, ip, account, password, via_host = dialog.getInputs()
             row_position = self.table.rowCount()
             self.table.insertRow(row_position)
 
@@ -283,7 +284,29 @@ class MainWindow(QMainWindow):
             connect_button = QPushButton("連線")
             connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
             self.table.setCellWidget(row_position, 5, connect_button)
+            
+            # 儲存 "透過主機連線" 的狀態
+            self.table.setItem(row_position, 6, QTableWidgetItem(str(via_host)))
+            
             self.save_data()
+
+    def edit_row(self):
+        selected_row = self.table.currentRow()
+        if selected_row >= 0:
+            current_name = self.table.item(selected_row, 1).text()
+            current_ip = self.table.item(selected_row, 2).text()
+            current_account = self.table.item(selected_row, 3).text()
+            current_password = self.table.item(selected_row, 4).text()
+            current_via_host = self.table.item(selected_row, 6).text() == 'True'
+            dialog = EntryDialog(self, current_name, current_ip, current_account, current_password, current_via_host)
+            if dialog.exec_() == QDialog.Accepted:
+                name, ip, account, password, via_host = dialog.getInputs()
+                self.table.setItem(selected_row, 1, QTableWidgetItem(name))
+                self.table.setItem(selected_row, 2, QTableWidgetItem(ip))
+                self.table.setItem(selected_row, 3, QTableWidgetItem(account))
+                self.table.setItem(selected_row, 4, QTableWidgetItem(password))
+                self.table.setItem(selected_row, 6, QTableWidgetItem(str(via_host)))
+                self.save_data()
 
     def remove_row(self):
         selected_row = self.table.currentRow()
@@ -298,13 +321,15 @@ class MainWindow(QMainWindow):
             current_ip = self.table.item(selected_row, 2).text()
             current_account = self.table.item(selected_row, 3).text()
             current_password = self.table.item(selected_row, 4).text()
-            dialog = EntryDialog(self, current_name, current_ip, current_account, current_password)
+            current_via_host = self.table.item(selected_row, 6).text() == 'True'
+            dialog = EntryDialog(self, current_name, current_ip, current_account, current_password, current_via_host)
             if dialog.exec_() == QDialog.Accepted:
-                name, ip, account, password = dialog.getInputs()
+                name, ip, account, password, via_host = dialog.getInputs()
                 self.table.setItem(selected_row, 1, QTableWidgetItem(name))
                 self.table.setItem(selected_row, 2, QTableWidgetItem(ip))
                 self.table.setItem(selected_row, 3, QTableWidgetItem(account))
                 self.table.setItem(selected_row, 4, QTableWidgetItem(password))
+                self.table.setItem(selected_row, 6, QTableWidgetItem(str(via_host)))
                 self.save_data()
 
     def connect_to_server(self, row):
@@ -316,7 +341,6 @@ class MainWindow(QMainWindow):
         shell = client.Dispatch("WScript.Shell")
         run_venv = ActivateVenv()
         run_venv.open_cmd(shell)
-        #EnumWindows(run_venv.set_cmd_to_foreground, None)
         run_venv.activate_venv(shell,ip,account,password)
 
     def add_tree_node(self):
@@ -465,6 +489,7 @@ class MainWindow(QMainWindow):
                 connect_button = QPushButton("連線")
                 connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
                 self.table.setCellWidget(row_position, 5, connect_button)
+                self.table.setItem(row_position, 6, QTableWidgetItem(str(connection["via_host"])))
     
     def find_node_data(self, node_data, node_name):
         # 遞迴地在 JSON 資料結構中找到對應名稱的節點資料
@@ -542,7 +567,8 @@ class MainWindow(QMainWindow):
                     "name": self.table.item(row, 1).text(),
                     "ip": self.table.item(row, 2).text(),
                     "account": self.table.item(row, 3).text(),
-                    "password": self.table.item(row, 4).text()
+                    "password": self.table.item(row, 4).text(),
+                    "via_host": self.table.item(row, 6).text() == 'True'
                 }
                 node_data["connections"].append(connection)
 
@@ -576,9 +602,12 @@ class MainWindow(QMainWindow):
         self.tree.expandAll()
 
 
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QCheckBox
+from PyQt5.QtCore import Qt
+
 class EntryDialog(QDialog):
 
-    def __init__(self, parent=None, name="", ip="", account="", password=""):
+    def __init__(self, parent=None, name="", ip="", account="", password="", via_host=False):
         super().__init__(parent)
         self.setWindowTitle("輸入資料")
         layout = QVBoxLayout()
@@ -599,6 +628,11 @@ class EntryDialog(QDialog):
         self.password_input = QLineEdit(password)
         layout.addWidget(self.password_input)
 
+        # 新增 "透過主機連線" 複選框
+        self.via_host_checkbox = QCheckBox("透過主機連線")
+        self.via_host_checkbox.setChecked(via_host)
+        layout.addWidget(self.via_host_checkbox)
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -607,29 +641,21 @@ class EntryDialog(QDialog):
         self.setLayout(layout)
 
     def getInputs(self):
-        return self.name_input.text(), self.ip_input.text(), self.account_input.text(), self.password_input.text()
+        return (
+            self.name_input.text(),
+            self.ip_input.text(),
+            self.account_input.text(),
+            self.password_input.text(),
+            self.via_host_checkbox.isChecked()
+        )
 
 class ActivateVenv:
 
     uid=""
 
-    def set_cmd_to_foreground(self, hwnd, extra):
-        """sets first command prompt to forgeround"""
-
-        if f"TestCMD-{self.uid}" in GetWindowText(hwnd):
-            SetForegroundWindow(hwnd)
-            return
-
-    def get_pid(self):
-        """gets process id of command prompt on foreground"""
-
-        window = GetForegroundWindow()
-        return GetWindowThreadProcessId(window)[1]
-
     def activate_venv(self, shell,ip,account,password):
         """activates venv of the active command prompt"""
 
-        #shell.AppActivate(self.get_pid())
         shell.SendKeys(f"ssh {account}@{ip}")
         shell.SendKeys("{ENTER}")
         time.sleep(1)
@@ -643,7 +669,7 @@ class ActivateVenv:
         """ opens cmd """
         self.uid = uuid.uuid4()
 
-        shell.run(f"D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{self.uid} /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
+        shell.run(f"E:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{self.uid} /cmd cmd /k \"E:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
         time.sleep(6)
 
 if __name__ == "__main__":

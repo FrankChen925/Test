@@ -6,7 +6,7 @@ from win32process import GetWindowThreadProcessId
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableWidget, QTableWidgetItem, QPushButton,
     QHBoxLayout, QHeaderView, QAbstractItemView, QLineEdit, QDialog, QLabel, QDialogButtonBox, QSplitter,
-    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle,QCheckBox
+    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle,QCheckBox,QFileDialog,QGroupBox
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon, QColor, QPalette, QPixmap
@@ -52,9 +52,35 @@ class MainWindow(QMainWindow):
         # 在 SSH 頁籤中加入分隔器佈局
         self.create_ssh_tab(ssh_tab)
 
+        # 創建設定按鈕
+        settings_button = QPushButton("設定")
+        settings_button.clicked.connect(self.show_settings)
+        
+        # 將設定按鈕加入到工具列
+        toolbar = self.addToolBar("工具列")
+        toolbar.addWidget(settings_button)
+
+        # 載入設定
+        self.settings = self.load_settings()
+
         # 從檔案中載入資料
         self.load_data()
-        #self.populate_tree()
+        
+    def show_settings(self):
+        dialog = SettingsDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # 重新載入設定
+            self.settings = self.load_settings()
+            QMessageBox.information(self, "成功", "設定已儲存！")
+
+    def load_settings(self):
+        try:
+            with open("settings.json", 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {"cmder_path": "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe"}
+        except json.JSONDecodeError:
+            return {"cmder_path": "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe"}
 
     def set_dark_theme(self):
         dark_palette = QPalette()
@@ -371,10 +397,43 @@ class MainWindow(QMainWindow):
         account = self.table.item(row, 3).text()
         password = self.table.item(row, 4).text()
         
+        # 解析via_host資訊
+        via_host_info = json.loads(self.table.item(row, 6).text())
+        is_via_host = via_host_info.get("enabled", False)
+        via_host_id = via_host_info.get("connection_id")
+        
         shell = client.Dispatch("WScript.Shell")
         run_venv = ActivateVenv()
-        run_venv.open_cmd(shell)
-        run_venv.activate_venv(shell,ip,account,password)
+
+        if is_via_host and via_host_id:
+            # 找到中繼主機的連線資訊
+            via_host_conn = self.find_connection_by_id(self.data, via_host_id)
+            if via_host_conn:
+                run_venv.open_cmd(shell,name)
+                # 先連接到中繼主機
+                run_venv.activate_venv(shell, via_host_conn["ip"], via_host_conn["account"], via_host_conn["password"])
+                time.sleep(1)  # 等待連接建立
+                # 然後從中繼主機連接到目標主機
+                run_venv.activate_venv(shell, ip, account, password)
+            else:
+                QMessageBox.warning(self, "錯誤", "找不到指定的中繼主機連線資訊！")
+        else:
+            run_venv.open_cmd(shell,name)
+            # 直接連接到目標主機
+            run_venv.activate_venv(shell, ip, account, password)
+
+    def find_connection_by_id(self,node_data, target_id):
+        # 檢查當前節點的connections
+        for conn in node_data.get("connections", []):
+            if conn.get("id") == target_id:
+                return conn
+        
+        # 遞迴檢查子節點
+        for child in node_data.get("children", []):
+            result = find_connection_by_id(child, target_id)
+            if result:
+                return result
+        return None
 
     def add_tree_node(self):
         selected_item = self.tree.currentItem()
@@ -500,6 +559,14 @@ class MainWindow(QMainWindow):
         if parent is None:
             self.tree.expandAll()
                 
+    def create_connect_button(self, row_position):
+        """創建連線按鈕並綁定對應行號"""
+        connect_button = QPushButton("連線")
+        def on_button_clicked():
+            self.connect_to_server(row_position)
+        connect_button.clicked.connect(on_button_clicked)
+        return connect_button
+
     def populate_table(self, node_name):
         self.table.setRowCount(0)
         selected_node_data = self.find_node_data(self.data, node_name)
@@ -523,8 +590,12 @@ class MainWindow(QMainWindow):
                 self.table.setItem(row_position, 3, QTableWidgetItem(connection["account"]))
                 self.table.setItem(row_position, 4, QTableWidgetItem(connection["password"]))
                 connect_button = QPushButton("連線")
-                connect_button.clicked.connect(lambda: self.connect_to_server(row_position))
+                
+                # 使用專門的函式創建按鈕
+                connect_button = self.create_connect_button(row_position)
                 self.table.setCellWidget(row_position, 5, connect_button)
+                #connect_button.clicked.connect(lambda checked, row=row_position: self.connect_to_server(row))
+                #self.table.setCellWidget(row_position, 5, connect_button)
                 
                 # 設置via_host信息
                 via_host_info = {
@@ -881,15 +952,222 @@ class ActivateVenv:
         shell.SendKeys(password)
         shell.SendKeys("{ENTER}")
         time.sleep(1)
-        shell.SendKeys("ll")
-        shell.SendKeys("{ENTER}")
 
-    def open_cmd(self, shell):
+    def open_cmd(self, shell,cmdName="Cmder Console"):
         """ opens cmd """
         self.uid = uuid.uuid4()
 
-        shell.run(f"D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title TestCMD-{self.uid} /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
-        time.sleep(6)
+        # 載入設定中的執行字串
+        try:
+            with open("settings.json", 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                exec_string = settings.get("exec_string", "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title \"{cmdName}-{uid}\" /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d")
+        except:
+            exec_string = "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title \"{cmdName}-{uid}\" /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d"
+        
+        # 替換變數
+        exec_string = exec_string.format(cmdName=cmdName, uid=self.uid)
+        
+        shell.run(exec_string)
+        time.sleep(8)
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("設定")
+        self.setMinimumWidth(1100)
+        self.setMinimumHeight(900)
+        
+        # 載入現有設定
+        self.settings = self.load_settings()
+        
+        # 設置深色主題
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #353535;
+                color: #ffffff;
+            }
+            QLabel {
+                color: #ffffff;
+            }
+            QLineEdit {
+                background-color: #252525;
+                color: #ffffff;
+                border: 1px solid #555555;
+                padding: 5px;
+            }
+            QPushButton {
+                background-color: #454545;
+                color: #ffffff;
+                border: 1px solid #555555;
+                padding: 5px;
+                min-width: 80px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #555555;
+            }
+            QPushButton:pressed {
+                background-color: #353535;
+            }
+            QGroupBox {
+                color: #ffffff;
+                border: 2px solid #555555;
+                border-radius: 5px;
+                margin-top: 1em;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px 0 3px;
+            }
+        """)
+
+        # 創建主要布局
+        main_layout = QVBoxLayout()
+        
+        # 創建 SSH Panel
+        ssh_group = QGroupBox("SSH")
+        ssh_layout = QVBoxLayout()
+        
+        exec_string_layout = QVBoxLayout()
+        exec_string_label = QLabel("執行字串:")
+        self.exec_string_input = QLineEdit(self.settings.get("exec_string", ""))
+        self.exec_string_input.setPlaceholderText("輸入shell.run的執行字串")
+        
+        exec_string_layout.addWidget(exec_string_label)
+        exec_string_layout.addWidget(self.exec_string_input)
+        ssh_layout.addLayout(exec_string_layout)
+        ssh_group.setLayout(ssh_layout)
+        main_layout.addWidget(ssh_group)
+
+        # 創建 MES Log Panel
+        mes_group = QGroupBox("MES Log")
+        mes_layout = QVBoxLayout()
+        
+        # MES Log HC
+        mes_hc_label = QLabel("HC:")
+        self.mes_hc_input = QLineEdit(self.settings.get("mes_log_hc_string", ""))
+        self.mes_hc_input.setPlaceholderText("輸入MES Log HC的網址")
+        
+        # MES Log LT
+        mes_lt_label = QLabel("LT:")
+        self.mes_lt_input = QLineEdit(self.settings.get("mes_log_lt_string", ""))
+        self.mes_lt_input.setPlaceholderText("輸入MES Log LT的網址")
+        
+        mes_layout.addWidget(mes_hc_label)
+        mes_layout.addWidget(self.mes_hc_input)
+        mes_layout.addWidget(mes_lt_label)
+        mes_layout.addWidget(self.mes_lt_input)
+        mes_group.setLayout(mes_layout)
+        main_layout.addWidget(mes_group)
+
+        # 創建 EI Log Panel
+        ei_group = QGroupBox("EI Log")
+        ei_layout = QVBoxLayout()
+        
+        # EI Log HC
+        ei_hc_label = QLabel("HC:")
+        self.ei_hc_input = QLineEdit(self.settings.get("ei_log_hc_string", ""))
+        self.ei_hc_input.setPlaceholderText("輸入EI Log HC的網址")
+        
+        # EI Log LT
+        ei_lt_label = QLabel("LT:")
+        self.ei_lt_input = QLineEdit(self.settings.get("ei_log_lt_string", ""))
+        self.ei_lt_input.setPlaceholderText("輸入EI Log LT的網址")
+        
+        ei_layout.addWidget(ei_hc_label)
+        ei_layout.addWidget(self.ei_hc_input)
+        ei_layout.addWidget(ei_lt_label)
+        ei_layout.addWidget(self.ei_lt_input)
+        ei_group.setLayout(ei_layout)
+        main_layout.addWidget(ei_group)
+
+        # 創建 Old Log Panel
+        old_group = QGroupBox("Old Log")
+        old_layout = QVBoxLayout()
+        
+        # Old Log HC
+        old_hc_label = QLabel("HC:")
+        self.old_hc_input = QLineEdit(self.settings.get("old_log_hc_string", ""))
+        self.old_hc_input.setPlaceholderText("輸入Old Log HC的網址")
+        
+        # Old Log LT
+        old_lt_label = QLabel("LT:")
+        self.old_lt_input = QLineEdit(self.settings.get("old_log_lt_string", ""))
+        self.old_lt_input.setPlaceholderText("輸入Old Log LT的網址")
+        
+        old_layout.addWidget(old_hc_label)
+        old_layout.addWidget(self.old_hc_input)
+        old_layout.addWidget(old_lt_label)
+        old_layout.addWidget(self.old_lt_input)
+        old_group.setLayout(old_layout)
+        main_layout.addWidget(old_group)
+
+        # 添加彈性空間
+        main_layout.addStretch()
+        
+        # 按鈕區域
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.Save | QDialogButtonBox.Cancel
+        )
+        button_box.accepted.connect(self.save_settings)
+        button_box.rejected.connect(self.reject)
+        
+        button_box.button(QDialogButtonBox.Save).setText("儲存")
+        button_box.button(QDialogButtonBox.Cancel).setText("取消")
+        
+        main_layout.addWidget(button_box)
+        self.setLayout(main_layout)
+
+    def load_settings(self):
+        try:
+            with open("settings.json", 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {
+                "exec_string": "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title \"{cmdName}-{uid}\" /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d",
+                "mes_log_hc_string": "",
+                "mes_log_lt_string": "",
+                "ei_log_hc_string": "",
+                "ei_log_lt_string": "",
+                "old_log_hc_string": "",
+                "old_log_lt_string": ""
+            }
+        except json.JSONDecodeError:
+            return {
+                "exec_string": "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe /title \"{cmdName}-{uid}\" /cmd cmd /k \"D:\\Tools\\cmder\\vendor\\init.bat\" -new_console:%d",
+                "mes_log_hc_string": "",
+                "mes_log_lt_string": "",
+                "ei_log_hc_string": "",
+                "ei_log_lt_string": "",
+                "old_log_hc_string": "",
+                "old_log_lt_string": ""
+            }
+
+    def save_settings(self):
+        settings = {
+            "exec_string": self.exec_string_input.text().strip(),
+            "mes_log_hc_string": self.mes_hc_input.text().strip(),
+            "mes_log_lt_string": self.mes_lt_input.text().strip(),
+            "ei_log_hc_string": self.ei_hc_input.text().strip(),
+            "ei_log_lt_string": self.ei_lt_input.text().strip(),
+            "old_log_hc_string": self.old_hc_input.text().strip(),
+            "old_log_lt_string": self.old_lt_input.text().strip()
+        }
+        
+        # 驗證執行字串不為空
+        if not settings["exec_string"]:
+            QMessageBox.warning(self, "錯誤", "SSH執行字串不能為空！")
+            return
+            
+        try:
+            with open("settings.json", 'w', encoding='utf-8') as f:
+                json.dump(settings, f, ensure_ascii=False, indent=4)
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "錯誤", f"儲存設定時發生錯誤：{str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

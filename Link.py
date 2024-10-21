@@ -411,7 +411,7 @@ class MainWindow(QMainWindow):
                 self.remove_node_from_data(parent_data, node_name)
 
             # 儲存更新後的資料
-            self.save_data()
+            self.save_data(isRemoveNode=True)
         else:
             QMessageBox.warning(self, "警告", "無法刪除根節點或未選擇節點！")
 
@@ -576,10 +576,10 @@ class MainWindow(QMainWindow):
         """檢查節點資料結構是否包含必要欄位"""
         return isinstance(node, dict) and "name" in node and "connections" in node and "children" in node
 
-    def save_data(self):
+    def save_data(self,isRemoveNode=False):
         root = self.tree.topLevelItem(0)  # 取得根節點
         if root:
-            self.data = self.traverse_tree_and_save_with_hierarchy(root)  # 遍歷整個樹並儲存所有節點的資料
+            self.data = self.traverse_tree_and_save_with_hierarchy(root,isRemoveNode)  # 遍歷整個樹並儲存所有節點的資料
 
         try:
             with open(DATA_FILE, 'w', encoding='utf-8') as file:
@@ -587,7 +587,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "錯誤", f"保存數據時發生錯誤：{str(e)}")
 
-    def traverse_tree_and_save_with_hierarchy(self, node):
+    def traverse_tree_and_save_with_hierarchy(self, node,isRemoveNode=False):
         node_name = node.text(0)
         node_data = {
             "name": node_name,
@@ -599,7 +599,7 @@ class MainWindow(QMainWindow):
         if existing_node_data:
             node_data["connections"] = existing_node_data.get("connections", [])
 
-        if node == self.tree.currentItem():
+        if node == self.tree.currentItem() and not isRemoveNode:
             node_data["connections"] = []
             for row in range(self.table.rowCount()):
                 # 獲取唯一識別碼
@@ -622,7 +622,7 @@ class MainWindow(QMainWindow):
 
         for i in range(node.childCount()):
             child_node = node.child(i)
-            node_data["children"].append(self.traverse_tree_and_save_with_hierarchy(child_node))
+            node_data["children"].append(self.traverse_tree_and_save_with_hierarchy(child_node,isRemoveNode))
 
         return node_data
   

@@ -2,13 +2,15 @@ import sys,json,time,os,uuid
 from win32com import client
 from  win32gui import GetWindowText, GetForegroundWindow, SetForegroundWindow, EnumWindows
 from win32process import GetWindowThreadProcessId
+from datetime import datetime, timedelta
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableWidget, QTableWidgetItem, QPushButton,
     QHBoxLayout, QHeaderView, QAbstractItemView, QLineEdit, QDialog, QLabel, QDialogButtonBox, QSplitter,
-    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle,QCheckBox,QFileDialog,QGroupBox
+    QTreeWidget, QTreeWidgetItem, QMessageBox, QInputDialog,QStyle,QCheckBox,QFileDialog,QGroupBox,
+    QDateTimeEdit, QTextEdit,QSizePolicy,QButtonGroup,QRadioButton
 )
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt, QSize, QDateTime
 from PyQt5.QtGui import QIcon, QColor, QPalette, QPixmap
 
 DATA_FILE = "ssh_data.json"
@@ -26,9 +28,6 @@ class MainWindow(QMainWindow):
         
         # 獲取電腦圖示
         self.computer_icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
-
-        # 設置視窗最大化
-        self.showMaximized()
 
         # 設置深色主題
         self.set_dark_theme()
@@ -60,6 +59,14 @@ class MainWindow(QMainWindow):
         toolbar = self.addToolBar("工具列")
         toolbar.addWidget(settings_button)
 
+         # 添加 "產生Log網址" 頁籤
+        log_url_tab = QWidget()
+        self.tab_widget.addTab(log_url_tab, "產生Log網址")
+        self.create_log_url_tab(log_url_tab)
+        
+        # 設置視窗最大化
+        self.showMaximized()
+
         # 載入設定
         self.settings = self.load_settings()
 
@@ -81,6 +88,205 @@ class MainWindow(QMainWindow):
             return {"cmder_path": "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe"}
         except json.JSONDecodeError:
             return {"cmder_path": "D:\\Tools\\cmder\\vendor\\conemu-maximus5\\ConEmu64.exe"}
+
+    def create_log_url_tab(self, tab):
+        layout = QVBoxLayout(tab)
+
+        # 環境選擇區域
+        env_group = QGroupBox("環境選擇")
+        env_layout = QHBoxLayout()
+        env_layout.setSpacing(20)
+        
+        # 創建環境選擇的 button group
+        self.env_button_group = QButtonGroup()
+        self.hc_radio = QRadioButton("HC")
+        self.lt_radio = QRadioButton("LT")
+        
+        # 添加到 button group
+        self.env_button_group.addButton(self.hc_radio)
+        self.env_button_group.addButton(self.lt_radio)
+        
+        self.hc_radio.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        # 設定 OMI 為預設選項
+        self.hc_radio.setChecked(True)  # 加入這行
+
+        env_layout.addWidget(self.hc_radio)
+        env_layout.addWidget(self.lt_radio)
+        env_group.setLayout(env_layout)
+        layout.addWidget(env_group)
+        
+        # 日期時間選擇區域
+        datetime_group = QGroupBox("日期時間選擇")
+        datetime_layout = QVBoxLayout()
+        
+        # 開始時間
+        start_layout = QHBoxLayout()
+        self.start_datetime_label = QLabel("開始時間:")
+        self.start_datetime_label.setStyleSheet("color: white;")
+        self.start_datetime = QDateTimeEdit()
+        self.start_datetime.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+        self.start_datetime.setDateTime(QDateTime.currentDateTime())
+
+        self.start_datetime_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        start_layout.addWidget(self.start_datetime_label)
+        start_layout.addWidget(self.start_datetime)
+        datetime_layout.addLayout(start_layout)
+
+        self.delta_checkbox = QCheckBox("Delta Time")
+        datetime_layout.addWidget(self.delta_checkbox)
+
+        datetime_group.setLayout(datetime_layout)
+        layout.addWidget(datetime_group)
+
+        # Log類型選擇區域
+        log_type_group = QGroupBox("Log類型")
+        log_type_layout = QHBoxLayout()
+        log_type_layout.setSpacing(20)
+        
+        # 創建 Log 類型的 button group
+        self.log_type_button_group = QButtonGroup()
+        self.omi_radio = QRadioButton("OMI")
+        self.brm_radio = QRadioButton("BRM")
+        self.mes_radio = QRadioButton("MES")
+        self.ei_gui_radio = QRadioButton("EI GUI")
+        self.ei_mes_radio = QRadioButton("EI MES")
+        
+        # 添加到 button group
+        self.log_type_button_group.addButton(self.omi_radio)
+        self.log_type_button_group.addButton(self.brm_radio)
+        self.log_type_button_group.addButton(self.mes_radio)
+        self.log_type_button_group.addButton(self.ei_gui_radio)
+        self.log_type_button_group.addButton(self.ei_mes_radio)
+        
+        # 設定 OMI 為預設選項
+        self.omi_radio.setChecked(True)  # 加入這行
+
+        # 設定大小策略
+        self.omi_radio.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.brm_radio.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.mes_radio.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.ei_gui_radio.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        
+        log_type_layout.addWidget(self.omi_radio)
+        log_type_layout.addWidget(self.brm_radio)
+        log_type_layout.addWidget(self.mes_radio)
+        log_type_layout.addWidget(self.ei_gui_radio)
+        log_type_layout.addWidget(self.ei_mes_radio)
+        
+        log_type_group.setLayout(log_type_layout)
+        layout.addWidget(log_type_group)
+
+        # 關鍵字輸入區域
+        keyword_group = QGroupBox("關鍵字")
+        keyword_layout = QVBoxLayout()
+        self.keyword_input = QLineEdit()
+        self.keyword_input.setPlaceholderText("輸入要查詢的關鍵字")
+        keyword_layout.addWidget(self.keyword_input)
+        keyword_group.setLayout(keyword_layout)
+        layout.addWidget(keyword_group)
+
+        # 生成的URL顯示區域
+        url_group = QGroupBox("生成的網址")
+        url_layout = QVBoxLayout()
+        self.url_display = QTextEdit()
+        self.url_display.setReadOnly(True)
+        url_layout.addWidget(self.url_display)
+        url_group.setLayout(url_layout)
+        layout.addWidget(url_group)
+
+        # 按鈕區域
+        button_layout = QHBoxLayout()
+        generate_button = QPushButton("產生Log網址")
+        generate_button.clicked.connect(self.generate_log_url)
+        button_layout.addWidget(generate_button)
+        layout.addLayout(button_layout)
+
+        # 添加彈性空間
+        layout.addStretch()
+
+    def generate_log_url(self):
+        """生成Log網址的邏輯"""
+        if not (self.hc_checkbox.isChecked() or self.lt_checkbox.isChecked()):
+            QMessageBox.warning(self, "警告", "請至少選擇一個環境 (HC/LT)！")
+            return
+
+        if not any([
+            self.omi_checkbox.isChecked(),
+            self.brm_checkbox.isChecked(),
+            self.mes_checkbox.isChecked(),
+            self.ei_gui_checkbox.isChecked(),
+            self.ei_mes_checkbox.isChecked()
+        ]):
+            QMessageBox.warning(self, "警告", "請至少選擇一種Log類型！")
+            return
+
+        # 從設定檔加載網址
+        settings = self.load_settings()
+
+        generated_urls = []
+
+        # 獲取時間範圍
+        start_time = self.start_datetime.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+        end_time = None
+        if self.delta_checkbox.isChecked():
+            end_time = self.end_datetime.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+
+        keyword = self.keyword_input.text().strip()
+
+        # 為每個選擇的環境生成URL
+        environments = []
+        if self.hc_checkbox.isChecked():
+            environments.append(("HC", {
+                "mes": settings.get("mes_log_hc_string", ""),
+                "ei": settings.get("ei_log_hc_string", ""),
+                "old": settings.get("old_log_hc_string", "")
+            }))
+        if self.lt_checkbox.isChecked():
+            environments.append(("LT", {
+                "mes": settings.get("mes_log_lt_string", ""),
+                "ei": settings.get("ei_log_lt_string", ""),
+                "old": settings.get("old_log_lt_string", "")
+            }))
+
+        for env_name, urls in environments:
+            if self.mes_checkbox.isChecked():
+                base_url = urls["mes"]
+                if base_url:
+                    url = f"{base_url}?startTime={start_time}"
+                    if end_time:
+                        url += f"&endTime={end_time}"
+                    if keyword:
+                        url += f"&keyword={keyword}"
+                    generated_urls.append(f"MES Log {env_name}:\n{url}\n")
+
+            if self.ei_mes_checkbox.isChecked() or self.ei_gui_checkbox.isChecked():
+                base_url = urls["ei"]
+                if base_url:
+                    url = f"{base_url}?startTime={start_time}"
+                    if end_time:
+                        url += f"&endTime={end_time}"
+                    if keyword:
+                        url += f"&keyword={keyword}"
+                    if self.ei_mes_checkbox.isChecked():
+                        generated_urls.append(f"EI MES Log {env_name}:\n{url}\n")
+                    if self.ei_gui_checkbox.isChecked():
+                        generated_urls.append(f"EI GUI Log {env_name}:\n{url}\n")
+
+            if self.omi_checkbox.isChecked() or self.brm_checkbox.isChecked():
+                base_url = urls["old"]
+                if base_url:
+                    url = f"{base_url}?startTime={start_time}"
+                    if end_time:
+                        url += f"&endTime={end_time}"
+                    if keyword:
+                        url += f"&keyword={keyword}"
+                    if self.omi_checkbox.isChecked():
+                        generated_urls.append(f"OMI Log {env_name}:\n{url}\n")
+                    if self.brm_checkbox.isChecked():
+                        generated_urls.append(f"BRM Log {env_name}:\n{url}\n")
+
+        # 顯示生成的URL
+        self.url_display.setText("\n".join(generated_urls))
 
     def set_dark_theme(self):
         dark_palette = QPalette()
@@ -160,6 +366,23 @@ class MainWindow(QMainWindow):
                 color: #ffffff;
                 border: 1px solid #555555;
                 padding: 3px;
+            }
+            QCheckBox,QRadioButton { 
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            QGroupBox {
+                color: #ffffff;
+                border: 2px solid #555555;
+                border-radius: 5px;
+                margin-top: 1em;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px 0 3px;
             }
         """)
 
@@ -430,7 +653,7 @@ class MainWindow(QMainWindow):
         
         # 遞迴檢查子節點
         for child in node_data.get("children", []):
-            result = find_connection_by_id(child, target_id)
+            result = self.find_connection_by_id(child, target_id)
             if result:
                 return result
         return None
@@ -440,9 +663,9 @@ class MainWindow(QMainWindow):
         if selected_item:
             new_name, ok = QInputDialog.getText(self, "新增節點", "請輸入新節點名稱：")
             if ok and new_name.strip():
-                if self.check_duplicate_node(new_name):
-                    QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
-                    return
+                # if self.check_duplicate_node(new_name):
+                #     QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
+                #     return
                 new_node = QTreeWidgetItem()
                 new_node.setText(0, new_name)
                 new_node.setIcon(0, QIcon(self.folder_icon))
@@ -491,9 +714,9 @@ class MainWindow(QMainWindow):
                 if new_name.strip() == "":
                     QMessageBox.warning(self, "錯誤", "節點名稱不可為空白！")
                     return
-                if self.check_duplicate_node(new_name):
-                    QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
-                    return
+                # if self.check_duplicate_node(new_name):
+                #     QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
+                #     return
                 
                 # 更新樹形結構
                 selected_item.setText(0, new_name)
@@ -969,7 +1192,7 @@ class ActivateVenv:
         exec_string = exec_string.format(cmdName=cmdName, uid=self.uid)
         
         shell.run(exec_string)
-        time.sleep(8)
+        time.sleep(10)
 
 class SettingsDialog(QDialog):
     def __init__(self, parent=None):

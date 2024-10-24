@@ -133,6 +133,7 @@ class MainWindow(QMainWindow):
         datetime_layout.addLayout(start_layout)
 
         self.delta_checkbox = QCheckBox("Delta Time")
+        self.delta_checkbox.setStyleSheet("color: white;")
         datetime_layout.addWidget(self.delta_checkbox)
 
         datetime_group.setLayout(datetime_layout)
@@ -205,7 +206,7 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
     def generate_log_url(self):
-        """生成Log網址的邏輯"""
+        """生成Log��址的邏輯"""
         if not (self.hc_checkbox.isChecked() or self.lt_checkbox.isChecked()):
             QMessageBox.warning(self, "警告", "請至少選擇一個環境 (HC/LT)！")
             return
@@ -368,7 +369,6 @@ class MainWindow(QMainWindow):
                 padding: 3px;
             }
             QCheckBox,QRadioButton { 
-                color: white;
                 font-size: 20px;
                 font-weight: bold;
             }
@@ -663,17 +663,38 @@ class MainWindow(QMainWindow):
         if selected_item:
             new_name, ok = QInputDialog.getText(self, "新增節點", "請輸入新節點名稱：")
             if ok and new_name.strip():
-                # if self.check_duplicate_node(new_name):
-                #     QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
-                #     return
                 new_node = QTreeWidgetItem()
                 new_node.setText(0, new_name)
                 new_node.setIcon(0, QIcon(self.folder_icon))
+                
+                # 生成新的 node_id
+                new_node_id = str(uuid.uuid4())
+                new_node.setData(0, Qt.UserRole, new_node_id)
+                
                 selected_item.addChild(new_node)
                 self.tree.expandItem(selected_item)
+                
                 # 將新節點加入資料並儲存
-                self.data[new_name] = []
+                parent_node_id = selected_item.data(0, Qt.UserRole)
+                self.add_node_to_data(parent_node_id, new_name, new_node_id)
                 self.save_data()
+
+    def add_node_to_data(self, parent_node_id, new_name, new_node_id):
+        def add_recursive(node):
+            if node["node_id"] == parent_node_id:
+                node["children"].append({
+                    "node_id": new_node_id,
+                    "name": new_name,
+                    "connections": [],
+                    "children": []
+                })
+                return True
+            for child in node["children"]:
+                if add_recursive(child):
+                    return True
+            return False
+
+        add_recursive(self.data)
 
     def remove_tree_node(self):
         """刪除選中的樹形節點，同時更新資料結構."""
@@ -714,9 +735,6 @@ class MainWindow(QMainWindow):
                 if new_name.strip() == "":
                     QMessageBox.warning(self, "錯誤", "節點名稱不可為空白！")
                     return
-                # if self.check_duplicate_node(new_name):
-                #     QMessageBox.warning(self, "錯誤", "節點名稱已存在，請輸入其他名稱！")
-                #     return
                 
                 # 更新樹形結構
                 selected_item.setText(0, new_name)
@@ -757,8 +775,9 @@ class MainWindow(QMainWindow):
         return False
 
     def on_tree_node_clicked(self, item, column):
-        self.populate_table(item.text(0))
-        self.set_column_widths([0.282, 0.2, 0.2,0.2,0.1])  # 依百分比設定每列的寬度 (30%, 50%, 20%)
+        node_id = item.data(0, Qt.UserRole)
+        self.populate_table(node_id)
+        self.set_column_widths([0.282, 0.2, 0.2,0.2,0.1])
 
     def populate_tree_with_hierarchy(self, node_data, parent=None):
         if not self.is_valid_node(node_data):
@@ -769,6 +788,7 @@ class MainWindow(QMainWindow):
             root = QTreeWidgetItem(self.tree)
             root.setText(0, node_data["name"])
             root.setIcon(0, QIcon(self.folder_icon))
+            root.setData(0, Qt.UserRole, node_data["node_id"])
             
             for child in node_data.get("children", []):
                 self.populate_tree_with_hierarchy(child, root)
@@ -776,6 +796,7 @@ class MainWindow(QMainWindow):
             child_item = QTreeWidgetItem(parent)
             child_item.setText(0, node_data["name"])
             child_item.setIcon(0, QIcon(self.folder_icon))
+            child_item.setData(0, Qt.UserRole, node_data["node_id"])
             for child in node_data.get("children", []):
                 self.populate_tree_with_hierarchy(child, child_item)
 
@@ -790,9 +811,9 @@ class MainWindow(QMainWindow):
         connect_button.clicked.connect(on_button_clicked)
         return connect_button
 
-    def populate_table(self, node_name):
+    def populate_table(self, node_id):
         self.table.setRowCount(0)
-        selected_node_data = self.find_node_data(self.data, node_name)
+        selected_node_data = self.find_node_data_by_id(self.data, node_id)
         if selected_node_data:
             for connection in selected_node_data.get("connections", []):
                 row_position = self.table.rowCount()
@@ -827,15 +848,14 @@ class MainWindow(QMainWindow):
                 }
                 self.table.setItem(row_position, 6, QTableWidgetItem(json.dumps(via_host_info)))
 
-    def find_node_data(self, node_data, node_name):
-        # 遞迴地在 JSON 資料結構中找到對應名稱的節點資料
-        if node_data["name"] == node_name:
+    def find_node_data_by_id(self, node_data, node_id):
+        if node_data["node_id"] == node_id:
             return node_data
         for child in node_data.get("children", []):
-            result = self.find_node_data(child, node_name)
+            result = self.find_node_data_by_id(child, node_id)
             if result:
                 return result
-        return None                       
+        return None
     
     def load_data(self):
         try:
@@ -861,6 +881,7 @@ class MainWindow(QMainWindow):
     def get_default_data(self):
         """返回一個包含根節點的初始資料結構"""
         return {
+            "node_id": str(uuid.uuid4()),
             "name": "/",
             "connections": [],
             "children": []
@@ -881,15 +902,17 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "錯誤", f"保存數據時發生錯誤：{str(e)}")
 
-    def traverse_tree_and_save_with_hierarchy(self, node,isRemoveNode=False):
+    def traverse_tree_and_save_with_hierarchy(self, node, isRemoveNode=False):
         node_name = node.text(0)
+        node_id = node.data(0, Qt.UserRole)
         node_data = {
+            "node_id": node_id,
             "name": node_name,
             "connections": [],
             "children": []
         }
 
-        existing_node_data = self.find_node_data(self.data, node_name)
+        existing_node_data = self.find_node_data_by_id(self.data, node_id)
         if existing_node_data:
             node_data["connections"] = existing_node_data.get("connections", [])
 
@@ -916,7 +939,7 @@ class MainWindow(QMainWindow):
 
         for i in range(node.childCount()):
             child_node = node.child(i)
-            node_data["children"].append(self.traverse_tree_and_save_with_hierarchy(child_node,isRemoveNode))
+            node_data["children"].append(self.traverse_tree_and_save_with_hierarchy(child_node, isRemoveNode))
 
         return node_data
   

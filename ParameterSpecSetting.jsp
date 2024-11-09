@@ -303,10 +303,10 @@ function doInit()
 
 function doQuery()
 {
-	document.EqpIlluminationMode.action = 'EqpIlluminationMode.jsp';
-	document.EqpIlluminationMode._event.value = "query";
+	document.ParameterSpecSetting.action = 'ParameterSpecSetting.jsp';
+	document.ParameterSpecSetting._event.value = "query";
 	disableGUI();
-	document.EqpIlluminationMode.submit();
+	document.ParameterSpecSetting.submit();
 }
 
 function doUpdate()
@@ -322,26 +322,25 @@ function doUpdate()
 	var isUsable = rowData['is_usable'];
 	var description = rowData['description'];
 
-	
 	if(illuminationName == null && fab == null)
 	{
 		showWarningDialog('W000220');
 		return;
 	}
 
-	document.EqpIlluminationMode.selectIlluminationName.value = illuminationName;
-	document.EqpIlluminationMode.selectWaferSize.value = fab;
-	document.EqpIlluminationMode.selectEqpType.value = eqpType;
-	document.EqpIlluminationMode.selectIlluminationType.value = illuminationType;
-	document.EqpIlluminationMode.selectLensNa.value = lensNa;
-	document.EqpIlluminationMode.selectSigma.value = sigma;
-	document.EqpIlluminationMode.selectIsUsable.value = isUsable;
-	document.EqpIlluminationMode.selectDescription.value = description;
+	document.ParameterSpecSetting.selectIlluminationName.value = illuminationName;
+	document.ParameterSpecSetting.selectWaferSize.value = fab;
+	document.ParameterSpecSetting.selectEqpType.value = eqpType;
+	document.ParameterSpecSetting.selectIlluminationType.value = illuminationType;
+	document.ParameterSpecSetting.selectLensNa.value = lensNa;
+	document.ParameterSpecSetting.selectSigma.value = sigma;
+	document.ParameterSpecSetting.selectIsUsable.value = isUsable;
+	document.ParameterSpecSetting.selectDescription.value = description;
 
-	document.EqpIlluminationMode.modifyEvent.value = "UPDATE";
-	document.EqpIlluminationMode.action = "EqpAddIlluminationMode.jsp";
+	document.ParameterSpecSetting.modifyEvent.value = "UPDATE";
+	document.ParameterSpecSetting.action = "ParameterUpdateSpecSetting.jsp";
 	disableGUI();
-	document.EqpIlluminationMode.submit();
+	document.ParameterSpecSetting.submit();
 }
 
 function doDelete()
@@ -367,32 +366,28 @@ function doDelete()
 
 		fab = fab.replace("CF","");
 
-		var ti = newServiceInput();	
-		ti.transaction_name = "MaintainIlluminationInfo";	
-		ti.service_plugin_id='wip_module';
-		ti.action_name = "DELETE";
-		
-		ti.illumination_name = illuminationName;
-		ti.wafer_size = fab;
-		ti.lens_na = lensNa;
-		ti.sigma = sigma;
-		ti.eqp_type = eqpType;
-		ti.illumination_type = illuminationType;
-		ti.is_usable = isUsable;
-		ti.description = description;
-			
+		document.ParameterSpecSetting.selectIlluminationName.value = illuminationName;
+		document.ParameterSpecSetting.selectWaferSize.value = fab;
+		document.ParameterSpecSetting.selectEqpType.value = eqpType;
+		document.ParameterSpecSetting.selectIlluminationType.value = illuminationType;
+		document.ParameterSpecSetting.selectLensNa.value = lensNa;
+		document.ParameterSpecSetting.selectSigma.value = sigma;
+		document.ParameterSpecSetting.selectIsUsable.value = isUsable;
+		document.ParameterSpecSetting.selectDescription.value = description;
+
+		document.ParameterSpecSetting.modifyEvent.value = "DELETE";
+		document.ParameterSpecSetting.action = "ParameterDeleteSpecSetting.jsp";
 		disableGUI();
-		var sajax = new SAjax();		
-		sajax.callServiceTrx(ti,"deleteIllumination");
+		document.ParameterSpecSetting.submit();
 	}	
 }
 
 function doAdd()
 {
-	document.EqpIlluminationMode.modifyEvent.value = "ADD"
-	document.EqpIlluminationMode.action = "EqpAddIlluminationMode.jsp";
+	document.ParameterSpecSetting.modifyEvent.value = "ADD"
+	document.ParameterSpecSetting.action = "ParameterAddSpecSetting.jsp";
 	disableGUI();
-	document.EqpIlluminationMode.submit();
+	document.ParameterSpecSetting.submit();
 }
 
 function processAjaxResult(msgId,to)
@@ -478,7 +473,7 @@ function onTableSelected(tableName,rowData,selectIndex,status)
 </script>
 <body CLASS="DocumentBody" onload="toggleLanguageForDoc(document);doInit();" scroll="no">
 <%-- Form Session -------------------------------------------------------------%>
-<form method="post" action="" name="EqpIlluminationMode">
+<form method="post" action="" name="ParameterSpecSetting">
 <input type="hidden" name="_event" value="">
 <input type="hidden" name="lmUser" value="">
 <!-- input type="hidden" name="productNameValue" value=""-->
@@ -648,7 +643,7 @@ function onTableSelected(tableName,rowData,selectIndex,status)
 					<td height="312"></td>
 					<td height="312">
 						<fieldset class="CommandTable" style="width:100%;height:310px">
-							<ui:Table name="consumeTable" formName="EqpIlluminationMode" hasCheckBox="" disableSort=""/>
+							<ui:Table name="consumeTable" formName="ParameterSpecSetting" hasCheckBox="" disableSort=""/>
 						</fieldset>
 					</td>
 					<td height="312"></td>

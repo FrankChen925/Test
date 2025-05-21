@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" version="27.0.6">
+  <diagram name="第 1 页" id="ZECaMjLlQPOzV0i4NkNQ">
+    <mxGraphModel dx="1564" dy="1774" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-26" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;shadow=0;opacity=20;" vertex="1" parent="1">
+          <mxGeometry x="10" y="-10" width="240" height="550" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-29" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;opacity=20;" vertex="1" parent="1">
+          <mxGeometry x="515" y="-10" width="240" height="550" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-3" target="Fbia73lGhVltI-nGSlQ0-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-3" target="Fbia73lGhVltI-nGSlQ0-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-3" value="&lt;div&gt;MES Call RPA&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-5" value="&lt;div&gt;MES執行Track In Cancel&lt;/div&gt;&lt;div&gt;&lt;div&gt;&amp;amp; alarm message on MES GUI&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="25" y="250" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-7" target="Fbia73lGhVltI-nGSlQ0-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-7" value="MES Track In" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.start_1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="50" y="30" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-12" target="Fbia73lGhVltI-nGSlQ0-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-12" value="&lt;div&gt;RPA click RUN&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="130" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-16" target="Fbia73lGhVltI-nGSlQ0-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-57" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-16" target="Fbia73lGhVltI-nGSlQ0-32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-16" value="RPA send PJ Start" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="230" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-17" target="Fbia73lGhVltI-nGSlQ0-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-58" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-17">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="820" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-17" value="&lt;div&gt;RPA send PJ End&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="310" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-18" target="Fbia73lGhVltI-nGSlQ0-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-18" value="&lt;div&gt;RPA send Track out&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="390" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-19" value="&lt;div&gt;RPA JOB END&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="470" width="130" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-53" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-31" target="Fbia73lGhVltI-nGSlQ0-48">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-31" value="&lt;div&gt;Process過程中，腳本執行失敗或是機台異常&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="345" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-32" value="&lt;div&gt;F通訊失敗RPA show message&amp;nbsp;&lt;/div&gt;&lt;div&gt;and write log&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="790" y="305" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-34" value="&lt;div&gt;F&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;通訊&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;失敗&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="60" y="190" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-56" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="Fbia73lGhVltI-nGSlQ0-37" target="Fbia73lGhVltI-nGSlQ0-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-37" value="&lt;div&gt;腳本執行失敗或是機台異常&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="170" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-41" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" target="Fbia73lGhVltI-nGSlQ0-31">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="630" y="290" as="sourcePoint" />
+            <mxPoint x="380" y="290" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="380" y="290" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-42" value="Time Out" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="510" y="260" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-45" value="Time Out" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="510" y="340" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-48" value="&lt;div&gt;RPA send create abnormal to MES&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="25" y="345" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-50" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="Fbia73lGhVltI-nGSlQ0-31">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="630" y="370" as="sourcePoint" />
+            <mxPoint x="510" y="240" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-54" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="Fbia73lGhVltI-nGSlQ0-37">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="620" y="195" as="sourcePoint" />
+            <mxPoint x="510" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-55" value="Time Out" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="510" y="190" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Fbia73lGhVltI-nGSlQ0-61" value="" style="shape=partialRectangle;whiteSpace=wrap;html=1;top=0;left=0;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="700" y="330" width="45" height="90" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
